@@ -3,6 +3,7 @@
 mod atomic;
 mod simd;
 
+use math::apply_random_float_error;
 use rand::Rng;
 use rustc_abi::Size;
 use rustc_apfloat::{Float, Round};
@@ -206,10 +207,28 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
 
+            "sqrtf32" => {
+                let [f] = check_arg_count(args)?;
+                let f = this.read_scalar(f)?.to_f32()?;
+                // no host floats for sqrt
+                let res = math::sqrt(f);
+                // sqrt should not need a random float error
+                let res = this.adjust_nan(res, &[f]);
+                this.write_scalar(res, dest)?;
+            }
+            "sqrtf64" => {
+                let [f] = check_arg_count(args)?;
+                let f = this.read_scalar(f)?.to_f64()?;
+                // no host floats for sqrt
+                let res = math::sqrt(f);
+                // sqrt should not need a random float error
+                let res = this.adjust_nan(res, &[f]);
+                this.write_scalar(res, dest)?;
+            }
+
             #[rustfmt::skip]
             | "sinf32"
             | "cosf32"
-            | "sqrtf32"
             | "expf32"
             | "exp2f32"
             | "logf32"
@@ -218,26 +237,28 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             => {
                 let [f] = check_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f32()?;
-                // Using host floats except for sqrt (but it's fine, these operations do not have
+                // Using host floats (but it's fine, these operations do not have
                 // guaranteed precision).
+                let host = f.to_host();
                 let res = match intrinsic_name {
-                    "sinf32" => f.to_host().sin().to_soft(),
-                    "cosf32" => f.to_host().cos().to_soft(),
-                    "sqrtf32" => math::sqrt(f),
-                    "expf32" => f.to_host().exp().to_soft(),
-                    "exp2f32" => f.to_host().exp2().to_soft(),
-                    "logf32" => f.to_host().ln().to_soft(),
-                    "log10f32" => f.to_host().log10().to_soft(),
-                    "log2f32" => f.to_host().log2().to_soft(),
+                    "sinf32" => host.sin(),
+                    "cosf32" => host.cos(),
+                    "expf32" => host.exp(),
+                    "exp2f32" => host.exp2(),
+                    "logf32" => host.ln(),
+                    "log10f32" => host.log10(),
+                    "log2f32" => host.log2(),
                     _ => bug!(),
                 };
+                // Apply a relative error with a magnitude on the order of 2^-12 to simulate
+                // non-deterministic behaviour of floats as per https://github.com/rust-lang/rust/pull/124609
+                let res = apply_random_float_error(this, res.to_soft(), -12);
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
             #[rustfmt::skip]
             | "sinf64"
             | "cosf64"
-            | "sqrtf64"
             | "expf64"
             | "exp2f64"
             | "logf64"
@@ -246,19 +267,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             => {
                 let [f] = check_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f64()?;
-                // Using host floats except for sqrt (but it's fine, these operations do not have
+                // Using host floats (but it's fine, these operations do not have
                 // guaranteed precision).
+                let host = f.to_host();
                 let res = match intrinsic_name {
-                    "sinf64" => f.to_host().sin().to_soft(),
-                    "cosf64" => f.to_host().cos().to_soft(),
-                    "sqrtf64" => math::sqrt(f),
-                    "expf64" => f.to_host().exp().to_soft(),
-                    "exp2f64" => f.to_host().exp2().to_soft(),
-                    "logf64" => f.to_host().ln().to_soft(),
-                    "log10f64" => f.to_host().log10().to_soft(),
-                    "log2f64" => f.to_host().log2().to_soft(),
+                    "sinf64" => host.sin(),
+                    "cosf64" => host.cos(),
+                    "expf64" => host.exp(),
+                    "exp2f64" => host.exp2(),
+                    "logf64" => host.ln(),
+                    "log10f64" => host.log10(),
+                    "log2f64" => host.log2(),
                     _ => bug!(),
                 };
+                // Apply a relative error with a magnitude on the order of 2^-12 to simulate
+                // non-deterministic behaviour of floats as per https://github.com/rust-lang/rust/pull/124609
+                // Different error scale for larger floats?
+                let res = apply_random_float_error(this, res.to_soft(), -12);
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -270,6 +295,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let c = this.read_scalar(c)?.to_f32()?;
                 // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
                 let res = a.to_host().mul_add(b.to_host(), c.to_host()).to_soft();
+                // Apply a relative error with a magnitude on the order of 2^-12 to simulate
+                // non-deterministic behaviour of floats as per https://github.com/rust-lang/rust/pull/124609
+                let res = apply_random_float_error(this, res, -12);
                 let res = this.adjust_nan(res, &[a, b, c]);
                 this.write_scalar(res, dest)?;
             }
@@ -280,6 +308,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let c = this.read_scalar(c)?.to_f64()?;
                 // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
                 let res = a.to_host().mul_add(b.to_host(), c.to_host()).to_soft();
+                // Apply a relative error with a magnitude on the order of 2^-12 to simulate
+                // non-deterministic behaviour of floats as per https://github.com/rust-lang/rust/pull/124609
+                // TODO: Different error scale for larger floats?
+                let res = apply_random_float_error(this, res, -12);
                 let res = this.adjust_nan(res, &[a, b, c]);
                 this.write_scalar(res, dest)?;
             }
@@ -296,6 +328,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 } else {
                     ((a * b).value + c).value
                 };
+                // Apply a relative error with a magnitude on the order of 2^-12 to simulate
+                // non-deterministic behaviour of floats as per https://github.com/rust-lang/rust/pull/124609
+                let res = apply_random_float_error(this, res, -12);
                 let res = this.adjust_nan(res, &[a, b, c]);
                 this.write_scalar(res, dest)?;
             }
@@ -311,6 +346,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 } else {
                     ((a * b).value + c).value
                 };
+                // Apply a relative error with a magnitude on the order of 2^-12 to simulate
+                // non-deterministic behaviour of floats as per https://github.com/rust-lang/rust/pull/124609
+                // Different error scale for larger floats?
+                let res = apply_random_float_error(this, res, -12);
                 let res = this.adjust_nan(res, &[a, b, c]);
                 this.write_scalar(res, dest)?;
             }
@@ -321,6 +360,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let f2 = this.read_scalar(f2)?.to_f32()?;
                 // Using host floats (but it's fine, this operation does not have guaranteed precision).
                 let res = f1.to_host().powf(f2.to_host()).to_soft();
+                // Apply a relative error with a magnitude on the order of 2^-12 to simulate
+                // non-deterministic behaviour of floats as per https://github.com/rust-lang/rust/pull/124609
+                let res = apply_random_float_error(this, res, -12);
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
             }
@@ -330,6 +372,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let f2 = this.read_scalar(f2)?.to_f64()?;
                 // Using host floats (but it's fine, this operation does not have guaranteed precision).
                 let res = f1.to_host().powf(f2.to_host()).to_soft();
+                // Apply a relative error with a magnitude on the order of 2^-12 to simulate
+                // non-deterministic behaviour of floats as per https://github.com/rust-lang/rust/pull/124609
+                // Different error scale for larger floats?
+                let res = apply_random_float_error(this, res, -12);
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
             }
