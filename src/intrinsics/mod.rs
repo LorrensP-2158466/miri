@@ -3,7 +3,6 @@
 mod atomic;
 mod simd;
 
-use math::apply_random_float_error;
 use rand::Rng;
 use rustc_abi::Size;
 use rustc_apfloat::{Float, Round};
@@ -14,6 +13,7 @@ use rustc_span::{Symbol, sym};
 use self::atomic::EvalContextExt as _;
 use self::helpers::{ToHost, ToSoft, check_arg_count};
 use self::simd::EvalContextExt as _;
+use crate::math::apply_random_float_error;
 use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -158,6 +158,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => bug!(),
                 };
                 let res = f.round_to_integral(mode).value;
+                // Apply a relative error with a magnitude on the order of 2^-12 to simulate
+                // non-deterministic behaviour of floats
+                let res = apply_random_float_error(this, res, -12);
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -173,6 +176,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => bug!(),
                 };
                 let res = f.round_to_integral(mode).value;
+                // Apply a relative error with a magnitude on the order of 2^-12 to simulate
+                // non-deterministic behaviour of floats
+                let res = apply_random_float_error(this, res, -12);
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -188,6 +194,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => bug!(),
                 };
                 let res = f.round_to_integral(mode).value;
+                // Apply a relative error with a magnitude on the order of 2^-12 to simulate
+                // non-deterministic behaviour of floats
+                let res = apply_random_float_error(this, res, -12);
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -203,6 +212,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => bug!(),
                 };
                 let res = f.round_to_integral(mode).value;
+                // Apply a relative error with a magnitude on the order of 2^-12 to simulate
+                // non-deterministic behaviour of floats
+                let res = apply_random_float_error(this, res, -12);
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -249,7 +261,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => bug!(),
                 };
                 // Apply a relative error with a magnitude on the order of 2^-12 to simulate
-                // non-deterministic behaviour of floats as per https://github.com/rust-lang/rust/pull/124609
+                // non-deterministic behaviour of floats
                 let res = apply_random_float_error(this, res.to_soft(), -12);
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
@@ -293,7 +305,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
                 let res = a.to_host().mul_add(b.to_host(), c.to_host()).to_soft();
                 // Apply a relative error with a magnitude on the order of 2^-12 to simulate
-                // non-deterministic behaviour of floats as per https://github.com/rust-lang/rust/pull/124609
+                // non-deterministic behaviour of floats
                 let res = apply_random_float_error(this, res, -12);
                 let res = this.adjust_nan(res, &[a, b, c]);
                 this.write_scalar(res, dest)?;
@@ -306,7 +318,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
                 let res = a.to_host().mul_add(b.to_host(), c.to_host()).to_soft();
                 // Apply a relative error with a magnitude on the order of 2^-12 to simulate
-                // non-deterministic behaviour of floats as per https://github.com/rust-lang/rust/pull/124609
+                // non-deterministic behaviour of floats
                 let res = apply_random_float_error(this, res, -12);
                 let res = this.adjust_nan(res, &[a, b, c]);
                 this.write_scalar(res, dest)?;
@@ -343,7 +355,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     ((a * b).value + c).value
                 };
                 // Apply a relative error with a magnitude on the order of 2^-12 to simulate
-                // non-deterministic behaviour of floats as per https://github.com/rust-lang/rust/pull/124609
+                // non-deterministic behaviour of floats
                 let res = apply_random_float_error(this, res, -12);
                 let res = this.adjust_nan(res, &[a, b, c]);
                 this.write_scalar(res, dest)?;
@@ -356,7 +368,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Using host floats (but it's fine, this operation does not have guaranteed precision).
                 let res = f1.to_host().powf(f2.to_host()).to_soft();
                 // Apply a relative error with a magnitude on the order of 2^-12 to simulate
-                // non-deterministic behaviour of floats as per https://github.com/rust-lang/rust/pull/124609
+                // non-deterministic behaviour of floats
                 let res = apply_random_float_error(this, res, -12);
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
@@ -368,7 +380,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Using host floats (but it's fine, this operation does not have guaranteed precision).
                 let res = f1.to_host().powf(f2.to_host()).to_soft();
                 // Apply a relative error with a magnitude on the order of 2^-12 to simulate
-                // non-deterministic behaviour of floats as per https://github.com/rust-lang/rust/pull/124609
+                // non-deterministic behaviour of floats
                 let res = apply_random_float_error(this, res, -12);
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
@@ -382,7 +394,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let res = f.to_host().powi(i).to_soft();
                 let res = this.adjust_nan(res, &[f]);
                 // Apply a relative error with a magnitude on the order of 2^-12 to simulate
-                // non-deterministic behaviour of floats as per https://github.com/rust-lang/rust/pull/124609
+                // non-deterministic behaviour of floats
                 let res = apply_random_float_error(this, res, -12);
                 this.write_scalar(res, dest)?;
             }
@@ -393,7 +405,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Using host floats (but it's fine, this operation does not have guaranteed precision).
                 let res = f.to_host().powi(i).to_soft();
                 // Apply a relative error with a magnitude on the order of 2^-12 to simulate
-                // non-deterministic behaviour of floats as per https://github.com/rust-lang/rust/pull/124609
+                // non-deterministic behaviour of floats
                 let res = apply_random_float_error(this, res, -12);
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
@@ -418,8 +430,24 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => bug!(),
                 };
                 let res = this.binary_op(op, &a, &b)?;
-                // `binary_op` already called `generate_nan` if necessary.
-                this.write_immediate(*res, dest)?;
+                // Apply a relative error with a magnitude on the order of 2^-12 to simulate
+                // non-deterministic behaviour of floats
+                fn apply_error_and_write<'tcx, F: Float + Into<Scalar> >(
+                    ecx: &mut MiriInterpCx<'tcx>,
+                    val: F,
+                    dest: &MPlaceTy<'tcx>
+                ) -> InterpResult<'tcx> {
+                    let res = apply_random_float_error(ecx, val, -12);
+                    ecx.write_scalar(res, dest)
+                }
+                let scalar = res.to_scalar_int()?;
+                match res.layout.ty.kind(){
+                    ty::Float(FloatTy::F16) => apply_error_and_write(this, scalar.to_f16(), dest),
+                    ty::Float(FloatTy::F32) => apply_error_and_write(this, scalar.to_f32(), dest),
+                    ty::Float(FloatTy::F64) => apply_error_and_write(this, scalar.to_f64(), dest),
+                    ty::Float(FloatTy::F128) => apply_error_and_write(this, scalar.to_f128(), dest),
+                    _ => bug!()
+                }?;
             }
 
             #[rustfmt::skip]
@@ -467,9 +495,27 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if !float_finite(&res)? {
                     throw_ub_format!("`{intrinsic_name}` intrinsic produced non-finite value as result");
                 }
+                // Apply a relative error with a magnitude on the order of 2^-12 to simulate
+                // non-deterministic behaviour of floats
+                fn apply_error_and_write<'tcx, F: Float + Into<Scalar> >(
+                    ecx: &mut MiriInterpCx<'tcx>,
+                    val: F,
+                    dest: &MPlaceTy<'tcx>
+                ) -> InterpResult<'tcx> {
+                    let res = apply_random_float_error(ecx, val, -12);
+                    ecx.write_scalar(res, dest)
+                }
+                let scalar = res.to_scalar_int()?;
+                match res.layout.ty.kind(){
+                    ty::Float(FloatTy::F16) => apply_error_and_write(this, scalar.to_f16(), dest),
+                    ty::Float(FloatTy::F32) => apply_error_and_write(this, scalar.to_f32(), dest),
+                    ty::Float(FloatTy::F64) => apply_error_and_write(this, scalar.to_f64(), dest),
+                    ty::Float(FloatTy::F128) => apply_error_and_write(this, scalar.to_f128(), dest),
+                    _ => bug!()
+                }?;
                 // This cannot be a NaN so we also don't have to apply any non-determinism.
                 // (Also, `binary_op` already called `generate_nan` if needed.)
-                this.write_immediate(*res, dest)?;
+                //this.write_immediate(*res, dest)?;
             }
 
             "float_to_int_unchecked" => {
