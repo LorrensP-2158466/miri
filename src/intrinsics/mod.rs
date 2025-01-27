@@ -430,6 +430,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => bug!(),
                 };
                 let res = this.binary_op(op, &a, &b)?;
+                // `binary_op` already called `generate_nan` if needed
                 // Apply a relative error with a magnitude on the order of 2^-12 to simulate
                 // non-deterministic behaviour of floats
                 fn apply_error_and_write<'tcx, F: Float + Into<Scalar> >(
@@ -505,6 +506,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let res = apply_random_float_error(ecx, val, -12);
                     ecx.write_scalar(res, dest)
                 }
+                // This cannot be a NaN so we also don't have to apply any non-determinism.
+                // (Also, `binary_op` already called `generate_nan` if needed.)
                 let scalar = res.to_scalar_int()?;
                 match res.layout.ty.kind(){
                     ty::Float(FloatTy::F16) => apply_error_and_write(this, scalar.to_f16(), dest),
@@ -513,9 +516,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     ty::Float(FloatTy::F128) => apply_error_and_write(this, scalar.to_f128(), dest),
                     _ => bug!()
                 }?;
-                // This cannot be a NaN so we also don't have to apply any non-determinism.
-                // (Also, `binary_op` already called `generate_nan` if needed.)
-                //this.write_immediate(*res, dest)?;
             }
 
             "float_to_int_unchecked" => {
