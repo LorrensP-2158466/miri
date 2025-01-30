@@ -343,9 +343,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let f2 = this.read_scalar(f2)?.to_f32()?;
                 // Using host floats (but it's fine, this operation does not have guaranteed precision).
                 let res = f1.to_host().powf(f2.to_host()).to_soft();
-                // Apply a relative error with a magnitude on the order of 2^-12 to simulate
-                // non-deterministic behaviour of floats
-                let res = apply_random_float_error(this, res, -12);
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
             }
@@ -355,9 +352,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let f2 = this.read_scalar(f2)?.to_f64()?;
                 // Using host floats (but it's fine, this operation does not have guaranteed precision).
                 let res = f1.to_host().powf(f2.to_host()).to_soft();
-                // Apply a relative error with a magnitude on the order of 2^-12 to simulate
-                // non-deterministic behaviour of floats
-                let res = apply_random_float_error(this, res, -12);
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
             }
@@ -368,9 +362,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let i = this.read_scalar(i)?.to_i32()?;
                 // Using host floats (but it's fine, this operation does not have guaranteed precision).
                 let res = f.to_host().powi(i).to_soft();
-                // Apply a relative error with a magnitude on the order of 2^-12 to simulate
-                // non-deterministic behaviour of floats
-                let res = apply_random_float_error(this, res, -12);
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -380,9 +371,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let i = this.read_scalar(i)?.to_i32()?;
                 // Using host floats (but it's fine, this operation does not have guaranteed precision).
                 let res = f.to_host().powi(i).to_soft();
-                // Apply a relative error with a magnitude on the order of 2^-12 to simulate
-                // non-deterministic behaviour of floats
-                let res = apply_random_float_error(this, res, -12);
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
