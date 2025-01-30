@@ -210,7 +210,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "sqrtf32" => {
                 let [f] = check_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f32()?;
-                // no host floats for sqrt
+                // Sqrt is specified to be fully precise.
                 let res = math::sqrt(f);
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
@@ -218,7 +218,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "sqrtf64" => {
                 let [f] = check_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f64()?;
-                // no host floats for sqrt
+                // Sqrt is specified to be fully precise.
                 let res = math::sqrt(f);
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
