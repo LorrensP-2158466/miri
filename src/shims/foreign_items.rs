@@ -765,7 +765,9 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "tgammaf" => f_host.gamma(),
                     _ => bug!(),
                 };
-                let res = res.to_soft();
+                // Apply a relative error with a magnitude on the order of 2^-21 to simulate
+                // non-deterministic behaviour of floats
+                let res = math::apply_random_float_error(this, res.to_soft(), -21);
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
