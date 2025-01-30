@@ -49,6 +49,7 @@ fn main() {
     test_fast();
     test_algebraic();
     test_fmuladd();
+    test_non_determinism();
 }
 
 trait Float: Copy + PartialEq + Debug {
@@ -1021,8 +1022,8 @@ pub fn libm() {
 
     #[allow(deprecated)]
     {
-        assert_approx_eq!(5.0f32.abs_sub(3.0), 2.0);
-        assert_approx_eq!(3.0f64.abs_sub(5.0), 0.0);
+        assert_approx_eq!(5.0f32.abs_sub(3.0), 2.0f32);
+        assert_approx_eq!(3.0f64.abs_sub(5.0), 0.0f64);
     }
 
     assert_approx_eq!(27.0f32.cbrt(), 3.0f32);
@@ -1039,8 +1040,8 @@ pub fn libm() {
 
     assert_approx_eq!(0f32.sin(), 0f32);
     assert_approx_eq!((f64::consts::PI / 2f64).sin(), 1f64);
-    assert_approx_eq!(f32::consts::FRAC_PI_6.sin(), 0.5);
-    assert_approx_eq!(f64::consts::FRAC_PI_6.sin(), 0.5);
+    assert_approx_eq!(f32::consts::FRAC_PI_6.sin(), 0.5f32);
+    assert_approx_eq!(f64::consts::FRAC_PI_6.sin(), 0.5f64);
     assert_approx_eq!(f32::consts::FRAC_PI_4.sin().asin(), f32::consts::FRAC_PI_4);
     assert_approx_eq!(f64::consts::FRAC_PI_4.sin().asin(), f64::consts::FRAC_PI_4);
 
@@ -1051,8 +1052,8 @@ pub fn libm() {
 
     assert_approx_eq!(0f32.cos(), 1f32);
     assert_approx_eq!((f64::consts::PI * 2f64).cos(), 1f64);
-    assert_approx_eq!(f32::consts::FRAC_PI_3.cos(), 0.5);
-    assert_approx_eq!(f64::consts::FRAC_PI_3.cos(), 0.5);
+    assert_approx_eq!(f32::consts::FRAC_PI_3.cos(), 0.5f32);
+    assert_approx_eq!(f64::consts::FRAC_PI_3.cos(), 0.5f64);
     assert_approx_eq!(f32::consts::FRAC_PI_4.cos().acos(), f32::consts::FRAC_PI_4);
     assert_approx_eq!(f64::consts::FRAC_PI_4.cos().acos(), f64::consts::FRAC_PI_4);
 
@@ -1079,8 +1080,8 @@ pub fn libm() {
     assert_approx_eq!(0.5f32.atanh(), 0.54930614433405484569762261846126285f32);
     assert_approx_eq!(0.5f64.atanh(), 0.54930614433405484569762261846126285f64);
 
-    assert_approx_eq!(5.0f32.gamma(), 24.0);
-    assert_approx_eq!(5.0f64.gamma(), 24.0);
+    assert_approx_eq!(5.0f32.gamma(), 24.0f32);
+    assert_approx_eq!(5.0f64.gamma(), 24.0f64);
     assert_approx_eq!((-0.5f32).gamma(), (-2.0) * f32::consts::PI.sqrt());
     assert_approx_eq!((-0.5f64).gamma(), (-2.0) * f64::consts::PI.sqrt());
 
@@ -1228,4 +1229,94 @@ fn test_fmuladd() {
 
     test_operations_f32(0.1, 0.2, 0.3);
     test_operations_f64(1.1, 1.2, 1.3);
+}
+fn test_non_determinism() {
+    use std::intrinsics::{
+        fadd_algebraic, fadd_fast, fdiv_algebraic, fdiv_fast, fmul_algebraic, fmul_fast,
+        frem_algebraic, frem_fast, fsub_algebraic, fsub_fast,
+    };
+    use std::{f32, f64};
+    // FIXME(powi_powf): add when supported
+
+    // TODO: should we do an `assert_ne!` on res1 and res2?
+    // it is possible that the same error is applied on
+    // seperate operations (unlikely but possible)
+    // and thus this `assert_ne!` can "sometimes" fail.
+    macro_rules! test_operation {
+        ($a:expr, $b:expr, $op:path) => {
+            // 5 times enough?
+            let results: [_; 5] = ::core::array::from_fn(|i| (i, $op($a, $b)));
+            for (idx1, res1) in results {
+                for (idx2, res2) in results {
+                    if idx1 == idx2 {
+                        continue;
+                    }
+                    assert_approx_eq!(res1, res2);
+                }
+            }
+        };
+        ($a:expr, $op:path) => {
+            // 5 times enough?
+            let results: [_; 5] = ::core::array::from_fn(|i| (i, $op($a)));
+            for (idx1, res1) in results {
+                for (idx2, res2) in results {
+                    if idx1 == idx2 {
+                        assert_eq!(res1, res2);
+                        continue;
+                    }
+                    assert_approx_eq!(res1, res2);
+                }
+            }
+        };
+    }
+
+    macro_rules! test_operations_f {
+        ($a:expr, $b:expr) => {
+            test_operation!($a, $b, fadd_algebraic);
+            test_operation!($a, $b, fsub_algebraic);
+            test_operation!($a, $b, fmul_algebraic);
+            test_operation!($a, $b, fdiv_algebraic);
+            test_operation!($a, $b, frem_algebraic);
+
+            unsafe {
+                test_operation!($a, $b, fadd_fast);
+                test_operation!($a, $b, fsub_fast);
+                test_operation!($a, $b, fmul_fast);
+                test_operation!($a, $b, fdiv_fast);
+                test_operation!($a, $b, frem_fast);
+            }
+        };
+    }
+
+    pub fn test_operations_f16(a: f16, b: f16) {
+        test_operations_f!(a, b);
+    }
+    pub fn test_operations_f32(a: f32, b: f32) {
+        test_operations_f!(a, b);
+        test_operation!(a, b, f32::log);
+        test_operation!(a, f32::cos);
+        test_operation!(a, f32::exp);
+        test_operation!(a, f32::exp2);
+        test_operation!(a, f32::log2);
+        test_operation!(a, f32::log10);
+        test_operation!(a, f32::sin);
+    }
+    pub fn test_operations_f64(a: f64, b: f64) {
+        test_operations_f!(a, b);
+        test_operation!(a, b, f64::log);
+        test_operation!(a, f64::cos);
+        test_operation!(a, f64::exp);
+        test_operation!(a, f64::exp2);
+        test_operation!(a, f64::log2);
+        test_operation!(a, f64::log10);
+        test_operation!(a, f64::sin);
+    }
+    pub fn test_operations_f128(a: f128, b: f128) {
+        test_operations_f!(a, b);
+    }
+
+    test_operations_f16(5., 7.);
+    test_operations_f32(12., 4.);
+    test_operations_f64(19., 11.);
+    test_operations_f128(25., 18.);
 }
