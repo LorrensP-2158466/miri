@@ -15,7 +15,25 @@ use std::{f32, f64};
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr) => {{
         let (a, b) = (&$a, &$b);
-        assert!((*a - *b).abs() < 1.0e-6, "{} is not approximately equal to {}", *a, *b);
+        let a_signum = a.signum();
+        let b_signum = b.signum();
+
+        if a_signum != b_signum {
+            // checking -0.0 == +0.0
+            assert!(a == b, "{:?} is not approximately equal to {:?}: signs differ", *a, *b);
+        }
+        let a_bits = a.to_bits() as i128;
+        let b_bits = b.to_bits() as i128;
+        let ulp_difference = (a_bits - b_bits).abs();
+        assert!(
+            ulp_difference <= 16,
+            "
+            {:?} is not approximately equal to {:?}
+            ulp diff: {ulp_difference} > 16
+            ",
+            *a,
+            *b
+        );
     }};
 }
 
@@ -1027,7 +1045,7 @@ pub fn libm() {
     assert_approx_eq!(f64::consts::FRAC_PI_4.sin().asin(), f64::consts::FRAC_PI_4);
 
     assert_approx_eq!(1.0f32.sinh(), 1.1752012f32);
-    assert_approx_eq!(1.0f64.sinh(), 1.1752012f64);
+    assert_approx_eq!(1.0f64.sinh(), 1.1752011936438014f64);
     assert_approx_eq!(2.0f32.asinh(), 1.443635475178810342493276740273105f32);
     assert_approx_eq!((-2.0f64).asinh(), -1.443635475178810342493276740273105f64);
 
@@ -1039,12 +1057,12 @@ pub fn libm() {
     assert_approx_eq!(f64::consts::FRAC_PI_4.cos().acos(), f64::consts::FRAC_PI_4);
 
     assert_approx_eq!(1.0f32.cosh(), 1.54308f32);
-    assert_approx_eq!(1.0f64.cosh(), 1.54308f64);
+    assert_approx_eq!(1.0f64.cosh(), 1.5430806348152437f64);
     assert_approx_eq!(2.0f32.acosh(), 1.31695789692481670862504634730796844f32);
     assert_approx_eq!(3.0f64.acosh(), 1.76274717403908605046521864995958461f64);
 
     assert_approx_eq!(1.0f32.tan(), 1.557408f32);
-    assert_approx_eq!(1.0f64.tan(), 1.557408f64);
+    assert_approx_eq!(1.0f64.tan(), 1.5574077246549023f64);
     assert_approx_eq!(1.0_f32, 1.0_f32.tan().atan());
     assert_approx_eq!(1.0_f64, 1.0_f64.tan().atan());
     assert_approx_eq!(1.0f32.atan2(2.0f32), 0.46364761f32);
@@ -1084,11 +1102,11 @@ fn test_fast() {
     pub fn test_operations_f16(a: f16, b: f16) {
         // make sure they all map to the correct operation
         unsafe {
-            assert_eq!(fadd_fast(a, b), a + b);
-            assert_eq!(fsub_fast(a, b), a - b);
-            assert_eq!(fmul_fast(a, b), a * b);
-            assert_eq!(fdiv_fast(a, b), a / b);
-            assert_eq!(frem_fast(a, b), a % b);
+            assert_approx_eq!(fadd_fast(a, b), a + b);
+            assert_approx_eq!(fsub_fast(a, b), a - b);
+            assert_approx_eq!(fmul_fast(a, b), a * b);
+            assert_approx_eq!(fdiv_fast(a, b), a / b);
+            assert_approx_eq!(frem_fast(a, b), a % b);
         }
     }
 
@@ -1096,11 +1114,11 @@ fn test_fast() {
     pub fn test_operations_f32(a: f32, b: f32) {
         // make sure they all map to the correct operation
         unsafe {
-            assert_eq!(fadd_fast(a, b), a + b);
-            assert_eq!(fsub_fast(a, b), a - b);
-            assert_eq!(fmul_fast(a, b), a * b);
-            assert_eq!(fdiv_fast(a, b), a / b);
-            assert_eq!(frem_fast(a, b), a % b);
+            assert_approx_eq!(fadd_fast(a, b), a + b);
+            assert_approx_eq!(fsub_fast(a, b), a - b);
+            assert_approx_eq!(fmul_fast(a, b), a * b);
+            assert_approx_eq!(fdiv_fast(a, b), a / b);
+            assert_approx_eq!(frem_fast(a, b), a % b);
         }
     }
 
@@ -1108,11 +1126,11 @@ fn test_fast() {
     pub fn test_operations_f64(a: f64, b: f64) {
         // make sure they all map to the correct operation
         unsafe {
-            assert_eq!(fadd_fast(a, b), a + b);
-            assert_eq!(fsub_fast(a, b), a - b);
-            assert_eq!(fmul_fast(a, b), a * b);
-            assert_eq!(fdiv_fast(a, b), a / b);
-            assert_eq!(frem_fast(a, b), a % b);
+            assert_approx_eq!(fadd_fast(a, b), a + b);
+            assert_approx_eq!(fsub_fast(a, b), a - b);
+            assert_approx_eq!(fmul_fast(a, b), a * b);
+            assert_approx_eq!(fdiv_fast(a, b), a / b);
+            assert_approx_eq!(frem_fast(a, b), a % b);
         }
     }
 
@@ -1120,11 +1138,11 @@ fn test_fast() {
     pub fn test_operations_f128(a: f128, b: f128) {
         // make sure they all map to the correct operation
         unsafe {
-            assert_eq!(fadd_fast(a, b), a + b);
-            assert_eq!(fsub_fast(a, b), a - b);
-            assert_eq!(fmul_fast(a, b), a * b);
-            assert_eq!(fdiv_fast(a, b), a / b);
-            assert_eq!(frem_fast(a, b), a % b);
+            assert_approx_eq!(fadd_fast(a, b), a + b);
+            assert_approx_eq!(fsub_fast(a, b), a - b);
+            assert_approx_eq!(fmul_fast(a, b), a * b);
+            assert_approx_eq!(fdiv_fast(a, b), a / b);
+            assert_approx_eq!(frem_fast(a, b), a % b);
         }
     }
 
@@ -1146,41 +1164,41 @@ fn test_algebraic() {
     #[inline(never)]
     pub fn test_operations_f16(a: f16, b: f16) {
         // make sure they all map to the correct operation
-        assert_eq!(fadd_algebraic(a, b), a + b);
-        assert_eq!(fsub_algebraic(a, b), a - b);
-        assert_eq!(fmul_algebraic(a, b), a * b);
-        assert_eq!(fdiv_algebraic(a, b), a / b);
-        assert_eq!(frem_algebraic(a, b), a % b);
+        assert_approx_eq!(fadd_algebraic(a, b), a + b);
+        assert_approx_eq!(fsub_algebraic(a, b), a - b);
+        assert_approx_eq!(fmul_algebraic(a, b), a * b);
+        assert_approx_eq!(fdiv_algebraic(a, b), a / b);
+        assert_approx_eq!(frem_algebraic(a, b), a % b);
     }
 
     #[inline(never)]
     pub fn test_operations_f32(a: f32, b: f32) {
         // make sure they all map to the correct operation
-        assert_eq!(fadd_algebraic(a, b), a + b);
-        assert_eq!(fsub_algebraic(a, b), a - b);
-        assert_eq!(fmul_algebraic(a, b), a * b);
-        assert_eq!(fdiv_algebraic(a, b), a / b);
-        assert_eq!(frem_algebraic(a, b), a % b);
+        assert_approx_eq!(fadd_algebraic(a, b), a + b);
+        assert_approx_eq!(fsub_algebraic(a, b), a - b);
+        assert_approx_eq!(fmul_algebraic(a, b), a * b);
+        assert_approx_eq!(fdiv_algebraic(a, b), a / b);
+        assert_approx_eq!(frem_algebraic(a, b), a % b);
     }
 
     #[inline(never)]
     pub fn test_operations_f64(a: f64, b: f64) {
         // make sure they all map to the correct operation
-        assert_eq!(fadd_algebraic(a, b), a + b);
-        assert_eq!(fsub_algebraic(a, b), a - b);
-        assert_eq!(fmul_algebraic(a, b), a * b);
-        assert_eq!(fdiv_algebraic(a, b), a / b);
-        assert_eq!(frem_algebraic(a, b), a % b);
+        assert_approx_eq!(fadd_algebraic(a, b), a + b);
+        assert_approx_eq!(fsub_algebraic(a, b), a - b);
+        assert_approx_eq!(fmul_algebraic(a, b), a * b);
+        assert_approx_eq!(fdiv_algebraic(a, b), a / b);
+        assert_approx_eq!(frem_algebraic(a, b), a % b);
     }
 
     #[inline(never)]
     pub fn test_operations_f128(a: f128, b: f128) {
         // make sure they all map to the correct operation
-        assert_eq!(fadd_algebraic(a, b), a + b);
-        assert_eq!(fsub_algebraic(a, b), a - b);
-        assert_eq!(fmul_algebraic(a, b), a * b);
-        assert_eq!(fdiv_algebraic(a, b), a / b);
-        assert_eq!(frem_algebraic(a, b), a % b);
+        assert_approx_eq!(fadd_algebraic(a, b), a + b);
+        assert_approx_eq!(fsub_algebraic(a, b), a - b);
+        assert_approx_eq!(fmul_algebraic(a, b), a * b);
+        assert_approx_eq!(fdiv_algebraic(a, b), a / b);
+        assert_approx_eq!(frem_algebraic(a, b), a % b);
     }
 
     test_operations_f16(11., 2.);

@@ -248,9 +248,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "log2f32" => host.log2(),
                     _ => bug!(),
                 };
-                // Apply a relative error with a magnitude on the order of 2^-12 to simulate
+                // Apply a relative error with a magnitude on the order of 2^-21 to simulate
                 // non-deterministic behaviour of floats
-                let res = apply_random_float_error(this, res.to_soft(), -12);
+                let res = apply_random_float_error(this, res.to_soft(), -21);
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -278,9 +278,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "log2f64" => host.log2(),
                     _ => bug!(),
                 };
-                // Apply a relative error with a magnitude on the order of 2^-12 to simulate
+                // Apply a relative error with a magnitude on the order of 2^-50 to simulate
                 // non-deterministic behaviour of floats as per https://github.com/rust-lang/rust/pull/124609
-                let res = apply_random_float_error(this, res.to_soft(), -12);
+                let res = apply_random_float_error(this, res.to_soft(), -50);
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -395,22 +395,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
                 let res = this.binary_op(op, &a, &b)?;
                 // `binary_op` already called `generate_nan` if needed
-                // Apply a relative error with a magnitude on the order of 2^-12 to simulate
-                // non-deterministic behaviour of floats
+                // Apply a relative error to simulate non-deterministic
+                // behaviour of floats
                 fn apply_error_and_write<'tcx, F: Float + Into<Scalar> >(
                     ecx: &mut MiriInterpCx<'tcx>,
                     val: F,
-                    dest: &MPlaceTy<'tcx>
+                    dest: &MPlaceTy<'tcx>,
+                    err_scale: i32
                 ) -> InterpResult<'tcx> {
-                    let res = apply_random_float_error(ecx, val, -12);
+                    let res = apply_random_float_error(ecx, val, err_scale);
                     ecx.write_scalar(res, dest)
                 }
                 let scalar = res.to_scalar_int()?;
                 match res.layout.ty.kind(){
-                    ty::Float(FloatTy::F16) => apply_error_and_write(this, scalar.to_f16(), dest),
-                    ty::Float(FloatTy::F32) => apply_error_and_write(this, scalar.to_f32(), dest),
-                    ty::Float(FloatTy::F64) => apply_error_and_write(this, scalar.to_f64(), dest),
-                    ty::Float(FloatTy::F128) => apply_error_and_write(this, scalar.to_f128(), dest),
+                    ty::Float(FloatTy::F16) => apply_error_and_write(this, scalar.to_f16(), dest, -8),
+                    ty::Float(FloatTy::F32) => apply_error_and_write(this, scalar.to_f32(), dest, -21),
+                    ty::Float(FloatTy::F64) => apply_error_and_write(this, scalar.to_f64(), dest, -50),
+                    ty::Float(FloatTy::F128) => apply_error_and_write(this, scalar.to_f128(), dest, -111),
                     _ => bug!("`{intrinsic_name}` intrinsic called with non-float input type")
                 }?;
             }
@@ -460,24 +461,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if !float_finite(&res)? {
                     throw_ub_format!("`{intrinsic_name}` intrinsic produced non-finite value as result");
                 }
-                // Apply a relative error with a magnitude on the order of 2^-12 to simulate
-                // non-deterministic behaviour of floats
+                // Apply a relative error to simulate non-deterministic
+                // behaviour of floats
                 fn apply_error_and_write<'tcx, F: Float + Into<Scalar> >(
                     ecx: &mut MiriInterpCx<'tcx>,
                     val: F,
-                    dest: &MPlaceTy<'tcx>
+                    dest: &MPlaceTy<'tcx>,
+                    err_scale: i32
                 ) -> InterpResult<'tcx> {
-                    let res = apply_random_float_error(ecx, val, -12);
+                    let res = apply_random_float_error(ecx, val, err_scale);
                     ecx.write_scalar(res, dest)
                 }
                 // This cannot be a NaN so we also don't have to apply any non-determinism.
                 // (Also, `binary_op` already called `generate_nan` if needed.)
                 let scalar = res.to_scalar_int()?;
                 match res.layout.ty.kind(){
-                    ty::Float(FloatTy::F16) => apply_error_and_write(this, scalar.to_f16(), dest),
-                    ty::Float(FloatTy::F32) => apply_error_and_write(this, scalar.to_f32(), dest),
-                    ty::Float(FloatTy::F64) => apply_error_and_write(this, scalar.to_f64(), dest),
-                    ty::Float(FloatTy::F128) => apply_error_and_write(this, scalar.to_f128(), dest),
+                    ty::Float(FloatTy::F16) => apply_error_and_write(this, scalar.to_f16(), dest, -8),
+                    ty::Float(FloatTy::F32) => apply_error_and_write(this, scalar.to_f32(), dest, -21),
+                    ty::Float(FloatTy::F64) => apply_error_and_write(this, scalar.to_f64(), dest, -50),
+                    ty::Float(FloatTy::F128) => apply_error_and_write(this, scalar.to_f128(), dest, -111),
                     _ => bug!("`{intrinsic_name}` intrinsic called with non-float input type")
                 }?;
             }
