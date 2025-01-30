@@ -790,6 +790,9 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "fdimf" => f1.to_host().abs_sub(f2.to_host()).to_soft(),
                     _ => bug!(),
                 };
+                // Apply a relative error with a magnitude on the order of 2^-21 to simulate
+                // non-deterministic behaviour of floats
+                let res = math::apply_random_float_error(this, res, -21);
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
             }
@@ -824,7 +827,9 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "tgamma" => f_host.gamma(),
                     _ => bug!(),
                 };
-                let res = res.to_soft();
+                // Apply a relative error with a magnitude on the order of 2^-50 to simulate
+                // non-deterministic behaviour of floats
+                let res = math::apply_random_float_error(this, res.to_soft(), -50);
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -847,6 +852,9 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "fdim" => f1.to_host().abs_sub(f2.to_host()).to_soft(),
                     _ => bug!(),
                 };
+                // Apply a relative error with a magnitude on the order of 2^-50 to simulate
+                // non-deterministic behaviour of floats
+                let res = math::apply_random_float_error(this, res, -50);
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
             }
@@ -872,7 +880,10 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let (res, sign) = x.to_host().ln_gamma();
                 this.write_int(sign, &signp)?;
-                let res = this.adjust_nan(res.to_soft(), &[x]);
+                // Apply a relative error with a magnitude on the order of 2^-21 to simulate
+                // non-deterministic behaviour of floats
+                let res = math::apply_random_float_error(this, res.to_soft(), -21);
+                let res = this.adjust_nan(res, &[x]);
                 this.write_scalar(res, dest)?;
             }
             "lgamma_r" => {
@@ -883,7 +894,10 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let (res, sign) = x.to_host().ln_gamma();
                 this.write_int(sign, &signp)?;
-                let res = this.adjust_nan(res.to_soft(), &[x]);
+                // Apply a relative error with a magnitude on the order of 2^-50 to simulate
+                // non-deterministic behaviour of floats
+                let res = math::apply_random_float_error(this, res.to_soft(), -50);
+                let res = this.adjust_nan(res, &[x]);
                 this.write_scalar(res, dest)?;
             }
 

@@ -1261,7 +1261,6 @@ fn test_non_determinism() {
             for (idx1, res1) in results {
                 for (idx2, res2) in results {
                     if idx1 == idx2 {
-                        assert_eq!(res1, res2);
                         continue;
                     }
                     assert_approx_eq!(res1, res2);
@@ -1294,29 +1293,61 @@ fn test_non_determinism() {
     pub fn test_operations_f32(a: f32, b: f32) {
         test_operations_f!(a, b);
         test_operation!(a, b, f32::log);
-        test_operation!(a, f32::cos);
         test_operation!(a, f32::exp);
-        test_operation!(a, f32::exp2);
-        test_operation!(a, f32::log2);
-        test_operation!(a, f32::log10);
-        test_operation!(a, f32::sin);
     }
     pub fn test_operations_f64(a: f64, b: f64) {
         test_operations_f!(a, b);
         test_operation!(a, b, f64::log);
-        test_operation!(a, f64::cos);
         test_operation!(a, f64::exp);
-        test_operation!(a, f64::exp2);
-        test_operation!(a, f64::log2);
-        test_operation!(a, f64::log10);
-        test_operation!(a, f64::sin);
     }
     pub fn test_operations_f128(a: f128, b: f128) {
         test_operations_f!(a, b);
+    }
+
+    pub fn test_extras() {
+        // f32
+        test_operation!(10f32, f32::exp2);
+        test_operation!(f32::consts::E, f32::ln);
+        test_operation!(0f32, f32::ln_1p);
+        test_operation!(10f32, f32::log10);
+        test_operation!(8f32, f32::log2);
+        test_operation!(27.0f32, f32::cbrt);
+        test_operation!(3.0f32, 4.0f32, f32::hypot);
+        test_operation!(0f32, f32::sin);
+        test_operation!(0f32, f32::cos);
+        test_operation!(1.0f32, f32::sinh);
+        test_operation!(1.0f32, f32::asinh);
+        test_operation!(1.0f32, f32::cosh);
+        test_operation!(2.0f32, f32::acosh);
+        test_operation!(1.0f32, f32::tan);
+        test_operation!(1.0f32, f32::tanh);
+        test_operation!(1.0f32, 2.0f32, f32::atan2);
+        test_operation!(0.5f32, f32::atanh);
+        test_operation!(5.0f32, f32::gamma);
+
+        // f64
+        test_operation!(50f64, f64::exp2);
+        test_operation!(1f64, f64::ln);
+        test_operation!(0f64, f64::ln_1p);
+        test_operation!(f64::consts::E, f64::log10);
+        test_operation!(f64::consts::E, f64::log2);
+        test_operation!(0f64, f64::sin);
+        test_operation!(0f64, f64::cos);
+        test_operation!(27.0f64, f64::cbrt);
+        test_operation!(3.0f64, 4.0f64, f64::hypot);
+        test_operation!(1.0f64, f64::sinh);
+        test_operation!(1.0f64, f64::asinh);
+        test_operation!(1.0f64, f64::cosh);
+        test_operation!(3.0f64, f64::acosh);
+        test_operation!(1.0f64, f64::tan);
+        test_operation!(1.0f64, f64::tanh);
+        test_operation!(0.5f64, f64::atanh);
+        test_operation!(5.0f64, f64::gamma);
     }
 
     test_operations_f16(5., 7.);
     test_operations_f32(12., 4.);
     test_operations_f64(19., 11.);
     test_operations_f128(25., 18.);
+    test_extras();
 }
