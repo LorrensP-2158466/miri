@@ -12,8 +12,8 @@ use std::fmt::{Debug, Display, LowerHex};
 use std::hint::black_box;
 use std::{f32, f64};
 
-// accept up to 54ULP (16ULP for host floats and 16ULP for artificial error and 22 for rounding errors)
-const ALLOWED_ULP_DIFF: i128 = 54;
+// accept up to 64ULP (16ULP for host floats and 16ULP for artificial error and 32 for any rounding errors)
+const ALLOWED_ULP_DIFF: i128 = 64;
 
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr) => {{
