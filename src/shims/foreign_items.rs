@@ -1,6 +1,5 @@
 use std::collections::hash_map::Entry;
 use std::io::Write;
-use std::iter;
 use std::path::Path;
 
 use rustc_abi::{Align, AlignFromBytesError, Size};
@@ -9,6 +8,7 @@ use rustc_ast::expand::allocator::alloc_error_handler_name;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::mir::interpret::AllocInit;
 use rustc_middle::ty::Ty;
 use rustc_middle::{mir, ty};
 use rustc_span::Symbol;
@@ -358,7 +358,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Obtains a Miri backtrace. See the README for details.
             "miri_get_backtrace" => {
                 // `check_shim` happens inside `handle_miri_get_backtrace`.
-                this.handle_miri_get_backtrace(abi, link_name, args, dest)?;
+                this.handle_miri_get_backtrace(abi, link_name, args)?;
             }
             // Resolves a Miri backtrace frame. See the README for details.
             "miri_resolve_frame" => {
@@ -443,7 +443,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [size] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let size = this.read_target_usize(size)?;
                 if size <= this.max_size_of_val().bytes() {
-                    let res = this.malloc(size, /*zero_init:*/ false)?;
+                    let res = this.malloc(size, AllocInit::Uninit)?;
                     this.write_pointer(res, dest)?;
                 } else {
                     // If this does not fit in an isize, return null and, on Unix, set errno.
@@ -458,7 +458,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let items = this.read_target_usize(items)?;
                 let elem_size = this.read_target_usize(elem_size)?;
                 if let Some(size) = this.compute_size_in_bytes(Size::from_bytes(elem_size), items) {
-                    let res = this.malloc(size.bytes(), /*zero_init:*/ true)?;
+                    let res = this.malloc(size.bytes(), AllocInit::Zero)?;
                     this.write_pointer(res, dest)?;
                 } else {
                     // On size overflow, return null and, on Unix, set errno.
@@ -510,6 +510,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         Size::from_bytes(size),
                         Align::from_bytes(align).unwrap(),
                         memory_kind.into(),
+                        AllocInit::Uninit,
                     )?;
 
                     ecx.write_pointer(ptr, dest)
@@ -538,14 +539,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         Size::from_bytes(size),
                         Align::from_bytes(align).unwrap(),
                         MiriMemoryKind::Rust.into(),
+                        AllocInit::Zero,
                     )?;
-
-                    // We just allocated this, the access is definitely in-bounds.
-                    this.write_bytes_ptr(
-                        ptr.into(),
-                        iter::repeat(0u8).take(usize::try_from(size).unwrap()),
-                    )
-                    .unwrap();
                     this.write_pointer(ptr, dest)
                 });
             }
@@ -605,6 +600,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         Size::from_bytes(new_size),
                         align,
                         MiriMemoryKind::Rust.into(),
+                        AllocInit::Uninit,
                     )?;
                     this.write_pointer(new_ptr, dest)
                 });
@@ -888,7 +884,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "lgammaf_r" => {
                 let [x, signp] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let x = this.read_scalar(x)?.to_f32()?;
-                let signp = this.deref_pointer(signp)?;
+                let signp = this.deref_pointer_as(signp, this.machine.layouts.i32)?;
 
                 // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let (res, sign) = x.to_host().ln_gamma();
@@ -905,7 +901,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "lgamma_r" => {
                 let [x, signp] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let x = this.read_scalar(x)?.to_f64()?;
-                let signp = this.deref_pointer(signp)?;
+                let signp = this.deref_pointer_as(signp, this.machine.layouts.i32)?;
 
                 // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let (res, sign) = x.to_host().ln_gamma();

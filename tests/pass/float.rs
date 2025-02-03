@@ -53,6 +53,7 @@ fn main() {
     test_algebraic();
     test_fmuladd();
     test_non_determinism();
+    test_min_max_nondet();
 }
 
 trait Float: Copy + PartialEq + Debug {
@@ -1233,6 +1234,7 @@ fn test_fmuladd() {
     test_operations_f32(0.1, 0.2, 0.3);
     test_operations_f64(1.1, 1.2, 1.3);
 }
+
 fn test_non_determinism() {
     use std::intrinsics::{
         fadd_algebraic, fadd_fast, fdiv_algebraic, fdiv_fast, fmul_algebraic, fmul_fast,
@@ -1353,4 +1355,31 @@ fn test_non_determinism() {
     test_operations_f64(19., 11.);
     test_operations_f128(25., 18.);
     test_extras();
+}
+
+/// `min` and `max` on equal arguments are non-deterministic.
+fn test_min_max_nondet() {
+    /// Ensure that if we call the closure often enough, we see both `true` and `false.`
+    #[track_caller]
+    fn ensure_both(f: impl Fn() -> bool) {
+        let rounds = 16;
+        let first = f();
+        for _ in 1..rounds {
+            if f() != first {
+                // We saw two different values!
+                return;
+            }
+        }
+        // We saw the same thing N times.
+        panic!("expected non-determinism, got {rounds} times the same result: {first:?}");
+    }
+
+    ensure_both(|| f16::min(0.0, -0.0).is_sign_positive());
+    ensure_both(|| f16::max(0.0, -0.0).is_sign_positive());
+    ensure_both(|| f32::min(0.0, -0.0).is_sign_positive());
+    ensure_both(|| f32::max(0.0, -0.0).is_sign_positive());
+    ensure_both(|| f64::min(0.0, -0.0).is_sign_positive());
+    ensure_both(|| f64::max(0.0, -0.0).is_sign_positive());
+    ensure_both(|| f128::min(0.0, -0.0).is_sign_positive());
+    ensure_both(|| f128::max(0.0, -0.0).is_sign_positive());
 }
