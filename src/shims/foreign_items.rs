@@ -17,6 +17,7 @@ use rustc_target::callconv::{Conv, FnAbi};
 use self::helpers::{ToHost, ToSoft};
 use super::alloc::EvalContextExt as _;
 use super::backtrace::EvalContextExt as _;
+use crate::math::ulp_err_scale;
 use crate::*;
 
 /// Type of dynamic symbols (for `dlsym` et al)
@@ -765,9 +766,12 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "tgammaf" => f_host.gamma(),
                     _ => bug!(),
                 };
-                // Apply a relative error with a magnitude on the order of 2^-21 to simulate
-                // non-deterministic behaviour of floats
-                let res = math::apply_random_float_error(this, res.to_soft(), -21);
+                // Apply a relative error of 16ULP to simulate non-determinism
+                let res = math::apply_random_float_error(
+                    this,
+                    res.to_soft(),
+                    ulp_err_scale::<rustc_apfloat::ieee::Single>(4),
+                );
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -790,9 +794,12 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "fdimf" => f1.to_host().abs_sub(f2.to_host()).to_soft(),
                     _ => bug!(),
                 };
-                // Apply a relative error with a magnitude on the order of 2^-21 to simulate
-                // non-deterministic behaviour of floats
-                let res = math::apply_random_float_error(this, res, -21);
+                // Apply a relative error of 16ULP to simulate non-determinism
+                let res = math::apply_random_float_error(
+                    this,
+                    res,
+                    ulp_err_scale::<rustc_apfloat::ieee::Single>(4),
+                );
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
             }
@@ -827,9 +834,12 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "tgamma" => f_host.gamma(),
                     _ => bug!(),
                 };
-                // Apply a relative error with a magnitude on the order of 2^-50 to simulate
-                // non-deterministic behaviour of floats
-                let res = math::apply_random_float_error(this, res.to_soft(), -50);
+                // Apply a relative error of 16ULP to simulate non-determinism
+                let res = math::apply_random_float_error(
+                    this,
+                    res.to_soft(),
+                    ulp_err_scale::<rustc_apfloat::ieee::Double>(4),
+                );
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -852,9 +862,12 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "fdim" => f1.to_host().abs_sub(f2.to_host()).to_soft(),
                     _ => bug!(),
                 };
-                // Apply a relative error with a magnitude on the order of 2^-50 to simulate
-                // non-deterministic behaviour of floats
-                let res = math::apply_random_float_error(this, res, -50);
+                // Apply a relative error of 16ULP to simulate non-determinism
+                let res = math::apply_random_float_error(
+                    this,
+                    res,
+                    ulp_err_scale::<rustc_apfloat::ieee::Double>(4),
+                );
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
             }
@@ -880,9 +893,12 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let (res, sign) = x.to_host().ln_gamma();
                 this.write_int(sign, &signp)?;
-                // Apply a relative error with a magnitude on the order of 2^-21 to simulate
-                // non-deterministic behaviour of floats
-                let res = math::apply_random_float_error(this, res.to_soft(), -21);
+                // Apply a relative error of 16ULP to simulate non-determinism
+                let res = math::apply_random_float_error(
+                    this,
+                    res.to_soft(),
+                    ulp_err_scale::<rustc_apfloat::ieee::Single>(4),
+                );
                 let res = this.adjust_nan(res, &[x]);
                 this.write_scalar(res, dest)?;
             }
@@ -894,9 +910,12 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let (res, sign) = x.to_host().ln_gamma();
                 this.write_int(sign, &signp)?;
-                // Apply a relative error with a magnitude on the order of 2^-50 to simulate
-                // non-deterministic behaviour of floats
-                let res = math::apply_random_float_error(this, res.to_soft(), -50);
+                // Apply a relative error of 16ULP to simulate non-determinism
+                let res = math::apply_random_float_error(
+                    this,
+                    res.to_soft(),
+                    ulp_err_scale::<rustc_apfloat::ieee::Double>(4),
+                );
                 let res = this.adjust_nan(res, &[x]);
                 this.write_scalar(res, dest)?;
             }

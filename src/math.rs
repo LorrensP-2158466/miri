@@ -3,6 +3,16 @@ use rand::distributions::Distribution as _;
 use rustc_apfloat::Float as _;
 use rustc_apfloat::ieee::IeeeFloat;
 
+/// Creates an error scale to pass to `apply_random_float_error` when applying a 2^n ULP error.
+/// For example, if you want to apply a 16 ULP error, you should pass 4, because 2^4 = 16.
+pub(crate) fn ulp_err_scale<F: rustc_apfloat::Float>(n: u32) -> i32 {
+    let n = i32::try_from(n)
+        .expect("`err_scale_for_ulp`: exponent is too large to create an error scale");
+    // we know this fits
+    let prec = i32::try_from(F::PRECISION).unwrap();
+    -(prec - n - 1)
+}
+
 /// Disturbes a floating-point result by a relative error on the order of (-2^scale, 2^scale).
 pub(crate) fn apply_random_float_error<F: rustc_apfloat::Float>(
     ecx: &mut crate::MiriInterpCx<'_>,

@@ -12,6 +12,9 @@ use std::fmt::{Debug, Display, LowerHex};
 use std::hint::black_box;
 use std::{f32, f64};
 
+// accept up to 54ULP (16ULP for host floats and 16ULP for artificial error and 22 for rounding errors)
+const ALLOWED_ULP_DIFF: i128 = 54;
+
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr) => {{
         let (a, b) = (&$a, &$b);
@@ -26,10 +29,10 @@ macro_rules! assert_approx_eq {
         let b_bits = b.to_bits() as i128;
         let ulp_difference = (a_bits - b_bits).abs();
         assert!(
-            ulp_difference <= 16,
+            ulp_difference <= ALLOWED_ULP_DIFF,
             "
             {:?} is not approximately equal to {:?}
-            ulp diff: {ulp_difference} > 16
+            ulp diff: {ulp_difference} > {ALLOWED_ULP_DIFF}
             ",
             *a,
             *b
@@ -44,8 +47,8 @@ fn main() {
     ops();
     nan_casts();
     rounding();
-    mul_add();
     libm();
+    mul_add();
     test_fast();
     test_algebraic();
     test_fmuladd();
